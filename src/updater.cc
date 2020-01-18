@@ -1,12 +1,27 @@
 #include <updater.hh>
-#include <unistd.h>
-#include <iostream>
+
+
 #include <releax/http.hh>
+#include <releax/sys.hh>
+#include <releax/io.hh>
+
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <iostream>
 
 Updater::Updater(Config *cfg)
 {
     this->cfg = cfg;
     this->server = this->cfg->get("server");
+
+    uid_t uid = geteuid();
+    struct passwd *pw = getpwuid(uid);
+    if (pw) {
+        std::string uname = pw->pw_name;
+        this->DOWNLOAD_LOC = uname + "/.local/";
+    }
+    this->DOWNLOAD_LOC = "/tmp/";
 }
 
 float
@@ -56,15 +71,6 @@ Updater::Service()
             );
 
             n.send();
-        } else if (web_ver < osdata.version) {
-            std::string message = "Version Downgrade detected from current version '" + std::to_string(osdata.version).substr(0,4) + "' -> '" + std::to_string(web_ver).substr(0,4) + "'";
-            Notification n(
-                "Updater",
-                "Downgrade Detected",
-                message
-            );
-
-            n.send();
         }
         sleep(strtod(this->cfg->get("checktime","60").c_str(),0));
     }
@@ -78,10 +84,12 @@ Updater::do_update()
 {
     auto osdata = osinfo::get_info();
     auto web_ver = this->check_version();
-    if (web_ver != osdata.version) {
+    if (web_ver > osdata.version) {
         std::cout << "Update Detected " + std::to_string(web_ver) + " => " + std::to_string(osdata.version) << std::endl;
         
-        int st = this->download(this->get_response("url"));
+        std::string url = this->get_response("url");
+        std::cout << "Url " << url << std::endl;
+        int st = this->download(url);
         if (st != 0) {
             std::cout << "error while downloading data file";
             return -10;
@@ -103,29 +111,48 @@ Updater::do_update()
 int
 Updater::download(std::string url)
 {
-    Http http;
 
     if (!filesys::exist(this->DOWNLOAD_LOC)) {
         filesys::makedir(this->DOWNLOAD_LOC,0755);
     }
-    if (http.status != 0) {
-        return http.status;
-    }
-    http.download(url,this->DOWNLOAD_LOC + "/" + this->UPDATE_FILE);   
+    std::string cmd = "wget " +
+                      url     +
+                      " -O " + this->DOWNLOAD_LOC + "/" + this->UPDATE_FILE;
+    system(cmd.c_str());   
     return 0;
 }
 
 int
 Updater::do_update_patch(std::string file)
 {
-    std::cout << "Updating Patch from " + file << std::endl;
+    if (!sys::check_su()) {
+        std::cout << io::err() << "Super user access is required" << io::end();
+        return 0;
+    }
+    
+    std::cout << io::proc() <<  "Updating Patch from " + file << io::end();
+
+    int status = chmod(file.c_str(),0755);
+    if (status != 0) {
+        std::cout << io::err() << "unable to modify permission for " + file << io::end();
+        return 0;
+    }
+
+    std::cout << io::proc() << "upgrading system" << io::end();
+
+    if ((status = system(file.c_str())) != 0) {
+        std::cout << io::err() << "exit code: " << status << " unable to complete upgrade successfully" << io::end();
+        return status;
+    }
+    std::cout << io::msg() << "System is upgraded successfully" << io::end();
+    std::cout << io::msg() << "reboot is recommended" << io::end();
     return 0;
 }
 
 int
 Updater::do_update_osimg(std::string file)
 {
-    std::cout << "Updating OS image from " + file << std::endl;
+    std::cout << io::proc() << "Updating OS image from " + file << io::end();
     return 0;
 }
 
