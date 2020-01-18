@@ -4,9 +4,10 @@
 #include <releax/config.hh>
 #include <releax/releax.hh>
 #include <releax/notify.hh>
+#include <pwd.h>
 
 class Updater {
-    std::string DOWNLOAD_LOC = "~/.local/download/";
+    std::string DOWNLOAD_LOC;
     std::string UPDATE_FILE = "releax_os_file";
 
     Config      *cfg;
