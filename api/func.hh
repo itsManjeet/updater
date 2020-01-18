@@ -4,7 +4,7 @@
 #include <releax/app.hh>
 
 int func_check(App *app);
-
 int func_service(App *app);
+int func_do_update(App *app);
 
 #endif
