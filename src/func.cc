@@ -1,5 +1,6 @@
 #include <func.hh>
 #include <updater.hh>
+#include <releax/io.hh>
 
 
 int func_service(App *app)
@@ -16,11 +17,9 @@ int func_check(App *app)
     auto osdata = osinfo::get_info();
     auto webver = updater.check_version();
     if (webver > osdata.version) {
-        std::cout << "System Update found " + std::to_string(webver) + " => " + std::to_string(osdata.version) << std::endl;
-    } else if (webver < osdata.version) {
-        std::cout << "System Downgrade found " + std::to_string(webver) + " => " + std::to_string(osdata.version) << std::endl;
+        std::cout << io::msg() << "System Update found " + std::to_string(webver) + " => " + std::to_string(osdata.version) << io::end();
     } else {
-        std::cout << "Sytem is already upto date" << std::endl;
+        std::cout << io::msg() << "Sytem is already upto date" << io::end();
     }
     return 0;
 }
