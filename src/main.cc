@@ -1,6 +1,6 @@
 #include <func.hh>
 
-#define CONF_FILE "updater.conf"
+#define CONF_FILE "/etc/updater.conf"
 
 int
 main(int    ac,
